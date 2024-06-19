@@ -1,0 +1,17 @@
+gguf:
+  enabled: true
+  input_model:  # path to a Hugging Face model directory, or a .gguf file
+  keep_gguf: true  # whether to keep the original gguf file after conversion 
+  output_directory: outputs/
+  output_base_name: llama-3-8b-instruct
+  allow_requantize: false
+  leave_output_tensor: false
+  pure: false
+  imatrix: # optional, needed for I- quants and Q2_K_S
+  include_weights:  # tensor_name
+  exclude_weights:  # tensor_name, cannot be used together with include_weights
+  output_tensor_type:  # ggml_type
+  token_embedding_type:  # ggml_type
+  keep_split: false
+  gguf_types:
+    - q4_0
