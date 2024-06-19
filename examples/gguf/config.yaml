@@ -1,17 +1,16 @@
 gguf:
   enabled: true
-  input_model:  # path to a Hugging Face model directory, or a .gguf file
-  keep_gguf: true  # whether to keep the original gguf file after conversion 
+  input_model:  # path to a Hugging Face model, or a .gguf file
+  keep_gguf: true  # whether to keep the original gguf file after conversion, only if input_model is a directory
   output_directory: outputs/
-  output_base_name: llama-3-8b-instruct
-  allow_requantize: false
-  leave_output_tensor: false
-  pure: false
+  output_base_name: # the base name for exported models, e.g. `llama-3-8b-instruct` would result in `llama-3-8b-instruct.Q4_0.gguf`
   imatrix: # optional, needed for I- quants and Q2_K_S
-  include_weights:  # tensor_name
-  exclude_weights:  # tensor_name, cannot be used together with include_weights
-  output_tensor_type:  # ggml_type
-  token_embedding_type:  # ggml_type
-  keep_split: false
+  imatrix_gpu: false  # perform imatrix calculation on GPU. Uses GPU0 only for now.
   gguf_types:
-    - q4_0
+    - q4_k_m
+  # Hugging Face Hub configs
+  upload_to_hub: false
+  hf_token:  # acquired from https://huggingface.co/settings/token or from the env variable HF_TOKEN
+  hub_model_name: # a name e.g. Llama-3-8B-Instruct-GGUF, defaults to gguf-model
+  hub_model_entity: # defaults to user, can specify org
+  private: true  # create a private repo

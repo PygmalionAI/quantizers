@@ -167,3 +167,4 @@ cython_debug/
 *.yaml
 *.pyc
 outputs/
+*.dat

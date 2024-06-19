@@ -3,7 +3,11 @@ import os
 import glob
 import logging
 import re
+
 from rich.progress import Progress
+
+from .utils import check_disk_space, upload_to_hub
+from .imatrix import GGUFImatrix
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +18,7 @@ class GGUFQuantizer:
                    "Q3_K_M", "Q3_K_L", "IQ4_NL", "IQ4_XS", "Q4_K",
                    "Q4_K_S", "Q4_K_M", "Q5_K", "Q5_K_S", "Q5_K_M",
                    "Q6_K", "Q8_0", "F16", "BF16", "F32", "COPY"]
+
 
     def __init__(self, config):
         self.config = config
@@ -41,6 +46,11 @@ class GGUFQuantizer:
         output_name = self.config.get('output_base_name', 'gguf-model')
         input_model = self.config['input_model']
         imatrix_path = self.config.get('imatrix', None)
+        if imatrix_path and imatrix_path.endswith('.txt'):
+            print("Processing imatrix file. This wil take a while.")
+            imatrix = GGUFImatrix(self.config)
+            imatrix.process()
+            imatrix_path = os.path.join('artifacts', f"imatrix-{self.config.get('output_base_name', 'gguf-model')}.dat")
         if os.path.isdir(input_model):
             HF_DIR = True
         else:
@@ -49,6 +59,7 @@ class GGUFQuantizer:
         os.makedirs(output_directory, exist_ok=True)
 
         types_to_process = self._get_types_to_process()
+        types_to_process = check_disk_space(input_model, types_to_process, output_directory)
 
         if HF_DIR:
             print("Exporting Hugging Face model to GGUF. This may take "
@@ -64,6 +75,11 @@ class GGUFQuantizer:
         if HF_DIR and not self.config.get('keep_gguf', False):
             print("Removing temporary GGUF file.")
             os.remove(input_model)
+
+        if self.config.get('upload_to_hub', False):
+            print("Uploading to the Hugging Face Hub.")
+            upload_to_hub(output_directory)
+
     
     def _run_conversion_script(self, model_directory):
         convert_script_path = os.path.join('third_party', 'llama.cpp', 'convert-hf-to-gguf.py')
@@ -90,9 +106,10 @@ class GGUFQuantizer:
         self._run_command(command, type_name)
 
     def _build_command(self, binary_path, input_model, output_file, type_name, imatrix_path):
-        command = [binary_path, input_model, output_file, type_name]
+        command = [binary_path]
         if imatrix_path:
             command.extend(["--imatrix", imatrix_path])
+        command.extend([input_model, output_file, type_name])
         return command
 
     def _run_command(self, command, type_name):
