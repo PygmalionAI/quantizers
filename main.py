@@ -1,5 +1,6 @@
 import argparse
 import yaml
+import sys
 
 from quantizers import GGUFQuantizer
 
@@ -13,10 +14,13 @@ def run(config_file):
         else:
             print("No quantizers enabled.")
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description='Process config file.')
     parser.add_argument('config_file', type=str, help='Path to the config file')
 
     args = parser.parse_args()
 
     run(args.config_file)
+
+if __name__ == '__main__':
+    sys.exit(main())

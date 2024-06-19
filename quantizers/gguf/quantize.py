@@ -46,11 +46,6 @@ class GGUFQuantizer:
         output_name = self.config.get('output_base_name', 'gguf-model')
         input_model = self.config['input_model']
         imatrix_path = self.config.get('imatrix', None)
-        if imatrix_path and imatrix_path.endswith('.txt'):
-            print("Processing imatrix file. This will take a while.")
-            imatrix = GGUFImatrix(self.config)
-            imatrix.process()
-            imatrix_path = os.path.join('artifacts', f"imatrix-{self.config.get('output_base_name', 'gguf-model')}.dat")
         if os.path.isdir(input_model):
             HF_DIR = True
         else:
@@ -68,6 +63,13 @@ class GGUFQuantizer:
 
             gguf_file = glob.glob(os.path.join(input_model, '*.gguf'))[0]
             input_model = gguf_file
+            self.config['input_model'] = gguf_file
+
+        if imatrix_path and imatrix_path.endswith('.txt'):
+            print("Processing imatrix file. This will take a while.")
+            imatrix = GGUFImatrix(self.config)
+            imatrix.process()
+            imatrix_path = os.path.join('artifacts', f"imatrix-{self.config.get('output_base_name', 'gguf-model')}.dat")
 
         for type_name in types_to_process:
             self._process_type(type_name, binary_path, input_model, output_directory, output_name, imatrix_path)
