@@ -47,7 +47,7 @@ class GGUFQuantizer:
         input_model = self.config['input_model']
         imatrix_path = self.config.get('imatrix', None)
         if imatrix_path and imatrix_path.endswith('.txt'):
-            print("Processing imatrix file. This wil take a while.")
+            print("Processing imatrix file. This will take a while.")
             imatrix = GGUFImatrix(self.config)
             imatrix.process()
             imatrix_path = os.path.join('artifacts', f"imatrix-{self.config.get('output_base_name', 'gguf-model')}.dat")

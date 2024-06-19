@@ -1,2 +1,4 @@
 rich
 pyyaml
+torch
+gpustat

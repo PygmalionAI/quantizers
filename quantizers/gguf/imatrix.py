@@ -30,6 +30,7 @@ class GGUFImatrix:
             if torch.cuda.is_available() and imatrix_gpu:
                 num_layers = self._get_num_layers(input_model)
                 num_layers_to_gpu = self._get_num_layers_to_gpu(num_layers, input_model)
+                print("Calculating the optimal number of GPU layers...")
                 while num_layers_to_gpu > 0:
                     try:
                         self._run_imatrix_binary(input_model, imatrix_file,
