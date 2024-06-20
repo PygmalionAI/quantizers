@@ -29,17 +29,30 @@ def get_free_space(directory):
 
 def get_model_size(input_path):
     if os.path.isfile(input_path) and input_path.endswith('.gguf'):
-        return os.path.getsize(input_path)
+        model_size = os.path.getsize(input_path)
+        print(f"Model size: {model_size*1e-9:.2f} GB")
+        return model_size
     elif os.path.isdir(input_path):
         safetensors = glob.glob(os.path.join(input_path, '*.safetensors'))
         bins = glob.glob(os.path.join(input_path, '*.bin'))
         if safetensors:
-            return sum(os.path.getsize(f) for f in safetensors)
+            model_size = sum(os.path.getsize(f) for f in safetensors)
+            print(f"Model size: {model_size*1e-9:.2f} GB")
+            return model_size
         elif bins:
-            return sum(os.path.getsize(f) for f in bins)
+            model_size = sum(os.path.getsize(f) for f in bins)
+            print(f"Model size: {model_size*1e-9:.2f} GB")
+            return model_size
+    # if it's neither of those, look for it using the HfApi()
     else:
-        raise ValueError(f"The specified input path {input_path} is not a valid GGUF file "
-                         "or directory containing Hugging Face model files.")
+        print(f"Model {input_path} not found locally. Checking Hugging Face Hub.")
+        model_info = HfApi().repo_info(repo_id=input_path, files_metadata=True)
+        model_size = sum(sibling.size for sibling in model_info.siblings if sibling.lfs is not None)
+        print(f"Model size: {model_size*1e-9:.2f} GB")
+        return model_size
+    # else:
+    #     raise ValueError(f"The specified input path {input_path} is not a valid GGUF file "
+    #                      "or directory containing Hugging Face model files.")
 
 def check_disk_space(input_path, types_to_process, output_directory):
     model_size = get_model_size(input_path)
@@ -82,22 +95,22 @@ def check_disk_space(input_path, types_to_process, output_directory):
     
 
 
-def upload_to_hub(self, directory_path):
-    hf_token = self.config.get('hf_token')
+def upload_to_hub(directory_path, config):
+    hf_token = config.get('hf_token')
     if not hf_token:
         hf_token = os.getenv("HF_TOKEN")
         if not hf_token:
             raise ValueError("Hugging Face token is required to upload to the hub.")
 
-    hub_model_entity = self.config.get('hub_model_entity')
+    hub_model_entity = config.get('hub_model_entity')
     if not hub_model_entity:
         username = whoami(token=hf_token)['name']
     else:
         username = hub_model_entity
 
-    hub_model_name = self.config.get('hub_model_name', 'gguf-model')
+    hub_model_name = config.get('hub_model_name', 'gguf-model')
     repo_id = f"{username}/{hub_model_name}"
-    private = self.config.get('private', False)
+    private = config.get('private', False)
     try:
         create_repo(repo_id, token=hf_token, private=private)
     except HfHubHTTPError as e:

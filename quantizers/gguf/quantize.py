@@ -5,6 +5,7 @@ import logging
 import re
 
 from rich.progress import Progress
+from huggingface_hub import snapshot_download
 
 from .utils import check_disk_space, upload_to_hub
 from .imatrix import GGUFImatrix
@@ -42,26 +43,45 @@ class GGUFQuantizer:
 
     def run(self):
         binary_path = os.path.join('third_party', 'llama.cpp', 'llama-quantize')
-        output_directory = self.config['output_directory']
+        output_directory = self.config.get('output_directory')
         output_name = self.config.get('output_base_name', 'gguf-model')
         input_model = self.config['input_model']
         imatrix_path = self.config.get('imatrix', None)
-        if os.path.isdir(input_model):
-            HF_DIR = True
+
+        GGUF_FILE = False
+        LOCAL_DIR = False
+        HF_REPO = False
+
+        if os.path.isfile(input_model) and input_model.endswith('.gguf'):
+            GGUF_FILE = True
+        elif os.path.isdir(input_model) and os.path.exists(os.path.join(input_model, 'config.json')):
+            LOCAL_DIR = True
         else:
-            HF_DIR = False
+            HF_REPO = True
+
+        if HF_REPO:
+            print(f"Model {input_model} not found locally. Checking Hugging Face Hub.")
+            try:
+                input_model = snapshot_download(input_model,
+                                                # do not download .pth, .pt, .h5, .msgpack files
+                                                ignore_patterns=["*.pth", "*.pt", "*.h5", "*.msgpack"])
+            except Exception as e:
+                print(f"Error downloading model from Hugging Face Hub: {e}")
+                raise
 
         os.makedirs(output_directory, exist_ok=True)
 
         types_to_process = self._get_types_to_process()
         types_to_process = check_disk_space(input_model, types_to_process, output_directory)
 
-        if HF_DIR:
+        if LOCAL_DIR or HF_REPO:
             print("Exporting Hugging Face model to GGUF. This may take "
                   "a while depending on model size.")
             self._run_conversion_script(input_model)
-
-            gguf_file = glob.glob(os.path.join(input_model, '*.gguf'))[0]
+            if HF_REPO:
+                gguf_file = glob.glob(os.path.join(output_directory, 'converted.gguf'))[0]
+            else:
+                gguf_file = glob.glob(os.path.join(input_model, '*.gguf'))[0]
             input_model = gguf_file
             self.config['input_model'] = gguf_file
 
@@ -74,18 +94,21 @@ class GGUFQuantizer:
         for type_name in types_to_process:
             self._process_type(type_name, binary_path, input_model, output_directory, output_name, imatrix_path)
 
-        if HF_DIR and not self.config.get('keep_gguf', False):
+        if LOCAL_DIR or HF_REPO and not self.config.get('keep_gguf', False):
             print("Removing temporary GGUF file.")
             os.remove(input_model)
 
         if self.config.get('upload_to_hub', False):
             print("Uploading to the Hugging Face Hub.")
-            upload_to_hub(output_directory)
+            upload_to_hub(output_directory, self.config)
+            print("Uploaded to Hugging Face hub.")
 
     
     def _run_conversion_script(self, model_directory):
         convert_script_path = os.path.join('third_party', 'llama.cpp', 'convert-hf-to-gguf.py')
-        command = ['python3', convert_script_path, model_directory]
+        output_directory = self.config.get('output_directory')
+        outfile = os.path.join(output_directory, 'converted.gguf')
+        command = ['python3', convert_script_path, model_directory, '--outfile', outfile]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         for line in iter(process.stdout.readline, b''):
             line = line.decode('utf-8').strip()

@@ -3,12 +3,14 @@ from setuptools.command.develop import develop
 from setuptools.command.install import install
 import subprocess
 import os
+import multiprocessing
 
 class PostDevelopCommand(develop):
     """Post-installation for development mode."""
     def run(self):
         develop.run(self)
-        subprocess.check_call("cd third_party/llama.cpp && make", shell=True)
+        num_jobs = multiprocessing.cpu_count()
+        subprocess.check_call(f"cd third_party/llama.cpp && make -j{num_jobs}", shell=True)
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
@@ -17,7 +19,8 @@ class PostInstallCommand(install):
             print("Error: llama.cpp submodule not found. Please run 'git submodule update --init --recursive'")
             return
         install.run(self)
-        subprocess.check_call("cd third_party/llama.cpp && make", shell=True)
+        num_jobs = multiprocessing.cpu_count()
+        subprocess.check_call(f"cd third_party/llama.cpp && make{num_jobs}", shell=True)
 
 setup(
     name='quantizers',
