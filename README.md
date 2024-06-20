@@ -37,6 +37,12 @@ python3 -m pip install -e .
 python3 -m pip install -r requirements.txt
 ```
 
+To build with GPU support (currently for imatrix only), run this instead:
+
+```sh
+LLAMA_CUBLAS=1 python3 -m pip install -e .
+```
+
 ## Usage
 
 Only GGUF is supported for now. You will need a YAML config file. An example is provided in the [examples](/examples/) directory.
